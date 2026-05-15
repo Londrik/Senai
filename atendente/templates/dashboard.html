@@ -2,68 +2,59 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SENAI - Dashboard de Gestão</title>
+    <title>SENAI Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="/static/css/totem.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
-<body class="bg-gray-50 min-h-screen font-sans">
+<body class="bg-gray-50 min-h-screen">
 
-    <nav class="bg-[#005DA5] p-4 text-white shadow-md">
+    <nav class="bg-[#005DA5] p-6 text-white shadow-lg">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold italic">SENAI <span class="font-light not-italic">Dashboard</span></h1>
-            <div class="flex items-center gap-4">
-                <button onclick="solicitarResetFila()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">
+            <h1 class="text-2xl font-black italic">SENAI Dashboard</h1>
+            <div class="flex gap-4">
+                <button onclick="solicitarResetFila()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md">
                     🗑️ Resetar Fila
                 </button>
-                <a href="/atendente" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm transition-all">Sair</a>
+                <a href="/atendente" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-bold">Sair</a>
             </div>
         </div>
     </nav>
 
-    <main class="container mx-auto p-6">
-        <div class="flex justify-between items-end mb-8">
-            <div>
-                <h2 class="text-3xl font-black text-gray-800 uppercase">Métricas de Atendimento</h2>
-                <p class="text-gray-500">Dados consolidados da Unidade Gama</p>
-            </div>
-            <button onclick="carregarDados()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition-all">
-                🔄 Atualizar Dados
+    <main class="container mx-auto p-8">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-4xl font-black text-gray-800 uppercase italic">Métricas por Público</h2>
+            <button onclick="carregarDados()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl font-black shadow-lg">
+                🔄 ATUALIZAR DADOS
             </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div class="bg-white p-6 rounded-3xl shadow-sm border-b-4 border-blue-500">
-                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Total Atendidos</p>
-                <h3 id="card-total" class="text-4xl font-black text-gray-800">0</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+            <div class="card-base card-normal">
+                <p class="label-card">Normal</p>
+                <h3 id="card-norm" class="valor-preto">0</h3>
             </div>
             
-            <div class="bg-white p-6 rounded-3xl shadow-sm border-b-4 border-green-500">
-                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Tempo Médio de Espera</p>
-                <h3 id="card-media" class="text-4xl font-black text-gray-800">0 <span class="text-lg font-light">min</span></h3>
+            <div class="card-base card-preferencial">
+                <p class="label-card" style="color: white !important;">Preferencial</p>
+                <h3 id="card-pref" class="valor-preto">0</h3>
             </div>
-            
-            <div class="bg-white p-6 rounded-3xl shadow-sm border-b-4 border-yellow-500">
-                <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Status do Servidor</p>
-                <div class="flex items-center gap-2">
-                    <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                    <h3 class="text-2xl font-black text-gray-800 uppercase">Online</h3>
-                </div>
+
+            <div class="card-base card-financeiro">
+                <p class="label-card" style="color: white !important;">Financeiro</p>
+                <h3 id="card-fin" class="valor-preto">0</h3>
+            </div>
+
+            <div class="card-base card-total">
+                <p class="label-card">Total Geral</p>
+                <h3 id="card-total" class="valor-preto">0</h3>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100">
-                <h4 class="text-xl font-bold text-gray-700 mb-6">Volume por Horário</h4>
-                <canvas id="graficoBarras"></canvas>
-            </div>
-
-            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100">
-                <h4 class="text-xl font-bold text-gray-700 mb-6">Distribuição por Serviço</h4>
-                <div class="max-w-[300px] mx-auto">
-                    <canvas id="graficoPizza"></canvas>
-                </div>
+        <div class="container-grafico flex flex-col items-center">
+            <h4 class="text-2xl font-black text-gray-700 mb-8 uppercase italic">Proporção de Atendimento</h4>
+            <div style="position: relative; height:400px; width:400px">
+                <canvas id="graficoPizza"></canvas>
             </div>
         </div>
     </main>

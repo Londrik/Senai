@@ -1,4 +1,4 @@
-[<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,6 @@
 </head>
 <body class="bg-gray-200 min-h-screen flex flex-col font-sans">
 
-    <!-- Arquivo de Áudio Local -->
     <audio id="audioChamada" src="/static/audio/chamada.mp3" preload="auto"></audio>
 
     <header class="bg-white p-6 md:p-8 shadow-xl flex justify-between items-center border-b-8 border-[#005ca9]">
@@ -20,13 +19,13 @@
         </div>
         <div class="text-right hidden md:block">
             <div id="clock" class="text-5xl md:text-7xl font-black text-gray-800">00:00:00</div>
-            <div id="date" class="text-xl md:text-2xl font-bold text-gray-400 uppercase tracking-widest">Aguardando...</div>
+            <div id="date" class="text-xl md:text-2xl font-bold text-gray-400 uppercase tracking-widest">---</div>
         </div>
     </header>
 
     <main class="flex-grow p-4 md:p-10 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
         <!-- Lado Esquerdo: Senha Principal -->
-        <div id="card-principal" class="col-span-1 md:col-span-8 bg-[#005ca9] rounded-[2rem] md:rounded-[3rem] shadow-2xl flex flex-col items-center justify-between py-8 md:py-12 text-white relative overflow-hidden border-4 md:border-8 border-white/20">
+        <div id="card-principal" class="col-span-1 md:col-span-8 bg-[#005ca9] rounded-[2rem] md:rounded-[3rem] shadow-2xl flex flex-col items-center justify-between py-8 md:py-12 text-white relative border-4 md:border-8 border-white/20">
             <h2 class="text-2xl md:text-4xl font-black tracking-[0.5em] md:tracking-[1em] opacity-50 uppercase text-center">Senha Atual</h2>
             
             <div class="flex flex-col items-center justify-center flex-grow py-6">
@@ -46,7 +45,16 @@
                 <h3 class="text-2xl md:text-3xl font-black text-gray-400 mb-6 md:mb-8 uppercase tracking-tighter flex items-center gap-3">
                     <i data-lucide="history" class="w-6 h-6 md:w-8 md:h-8"></i> Últimas Chamadas
                 </h3>
-                <div id="history-list" class="space-y-4 md:space-y-6">
+                <div id="history-list" class="space-y-4">
+                    {% for item in historico %}
+                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border-l-8 border-[#005ca9]">
+                        <div class="flex flex-col">
+                            <span class="text-4xl font-black text-[#005ca9]">{{ item.codigo }}</span>
+                            <span class="text-xs font-bold text-gray-400 uppercase">{{ item.guiche }}</span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-500 uppercase">{{ item.nome }}</span>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -55,4 +63,4 @@
     <script src="/static/js/painel.js"></script>
     <script>lucide.createIcons();</script>
 </body>
-</html>]
+</html>

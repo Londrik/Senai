@@ -1,0 +1,37 @@
+:root {
+    --azul-senai: #005DA5;
+    --vermelho-senai: #EF4444;
+    --cinza-normal: #E5E7EB;
+    --verde-total: #22c55e;
+}
+
+.card-base {
+    padding: 1.5rem;
+    border-radius: 2rem;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-normal { background-color: #ffffff; border-bottom: 8px solid var(--cinza-normal); }
+.card-preferencial { background-color: var(--azul-senai); border-bottom: 8px solid #003d75; }
+.card-financeiro { background-color: var(--vermelho-senai); border-bottom: 8px solid #b91c1c; }
+.card-total { background-color: #ffffff; border-bottom: 8px solid var(--verde-total); }
+
+/* NÚMEROS SEMPRE PRETOS */
+.valor-preto {
+    color: #000000 !important;
+    font-size: 4rem;
+    font-weight: 900;
+}
+
+.label-card {
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.container-grafico {
+    background-color: #ffffff;
+    padding: 3rem;
+    border-radius: 3rem;
+    box-shadow: 0 20px 25px rgba(0, 0, 0, 0.05);
+}
