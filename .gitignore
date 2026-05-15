@@ -12,3 +12,5 @@ env/
 # Banco de dados local/Logs
 *.log
 *.sql
+*.db
+sql_app.db
