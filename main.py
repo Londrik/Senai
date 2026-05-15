@@ -6,13 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 import uvicorn
+import json
+import os
 
 from atendente import models, schemas, crud
 from atendente.database import SessionLocal, engine, get_db
 
+# Inicialização do Banco de Dados
 models.Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="Sistema de Atendimento SENAI - Unidade Gama")
 
 class ConnectionManager:
     def __init__(self):
@@ -26,18 +27,23 @@ class ConnectionManager:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
+    async def broadcast(self, message: dict):
+        for connection in list(self.active_connections):
             try:
-                await connection.send_text(message)
-            except:
-                if connection in self.active_connections:
-                    self.active_connections.remove(connection)
+                await connection.send_text(json.dumps(message))
+            except Exception:
+                self.disconnect(connection)
 
 manager = ConnectionManager()
+app = FastAPI(title="Sistema de Atendimento SENAI")
 
-app.mount("/static", StaticFiles(directory="atendente/static"), name="static")
-templates = Jinja2Templates(directory="atendente/templates")
+# --- CONFIGURAÇÃO DE DIRETÓRIOS ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+static_path = os.path.join(BASE_DIR, "atendente", "static")
+templates_path = os.path.join(BASE_DIR, "atendente", "templates")
+
+app.mount("/static", StaticFiles(directory=static_path), name="static")
+templates = Jinja2Templates(directory=templates_path)
 
 app.add_middleware(
     CORSMiddleware, 
@@ -55,57 +61,50 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
+# --- ROTAS DE NAVEGAÇÃO (CORRIGIDAS) ---
+
 @app.get("/", response_class=HTMLResponse)
 async def read_index(request: Request):
-    return templates.TemplateResponse(request=request, name="totem.html")
+    return templates.TemplateResponse(request, "totem.html")
 
 @app.get("/totem", response_class=HTMLResponse)
 async def exibir_totem(request: Request):
-    return templates.TemplateResponse(request=request, name="totem.html")
+    return templates.TemplateResponse(request, "totem.html")
 
 @app.get("/painel", response_class=HTMLResponse)
 async def exibir_painel(request: Request):
-    return templates.TemplateResponse(request=request, name="painel.html")
+    return templates.TemplateResponse(request, "painel.html")
 
 @app.get("/atendente", response_class=HTMLResponse)
 async def exibir_atendente(request: Request):
-    return templates.TemplateResponse(request=request, name="atendente.html")
+    return templates.TemplateResponse(request, "atendente.html")
 
-@app.get("/dashboard", response_class=HTMLResponse)
-async def exibir_dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="dashboard.html")
-
-@app.post("/gerar-senha", response_model=schemas.Atendimento)
-async def gerar_senha(senha: schemas.AtendimentoCreate, db: Session = Depends(get_db)):
-    nova_senha = crud.criar_atendimento(db=db, nome=senha.nome, tipo=senha.tipo)
-    await manager.broadcast("atualizar_lista")
-    return nova_senha
+# --- ROTAS DE API ---
 
 @app.get("/listar-fila")
 def listar_fila(db: Session = Depends(get_db)):
     return crud.get_fila_espera(db)
 
+@app.post("/gerar-senha", response_model=schemas.Atendimento)
+async def gerar_senha(senha: schemas.AtendimentoCreate, db: Session = Depends(get_db)):
+    nova_senha = crud.criar_atendimento(db=db, nome=senha.nome, tipo=senha.tipo)
+    await manager.broadcast({"tipo": "atualizar_lista"})
+    return nova_senha
+
 @app.post("/chamar-proxima", response_model=schemas.Atendimento)
 async def chamar_proxima(dados: schemas.ChamadaRequest, db: Session = Depends(get_db)):
     proximo = crud.chamar_proximo(db, guiche=dados.guiche)
     if not proximo:
-        raise HTTPException(status_code=404, detail="Não há ninguém aguardando na fila.")
-    await manager.broadcast("atualizar_painel")
+        raise HTTPException(status_code=404, detail="Fila de espera vazia.")
+    
+    await manager.broadcast({
+        "tipo": "atualizar_painel",
+        "senha": proximo.codigo,
+        "nome": proximo.nome,
+        "guiche": proximo.guiche
+    })
+    await manager.broadcast({"tipo": "atualizar_lista"})
     return proximo
-
-@app.post("/repetir-chamada")
-async def repetir_chamada():
-    await manager.broadcast("atualizar_painel")
-    return {"status": "Chamada repetida com sucesso"}
-
-@app.get("/api/v1/metrics")
-def get_metrics(db: Session = Depends(get_db)):
-    resumo = crud.get_metricas_resumo(db)
-    grafico_hora = crud.get_atendimentos_por_hora(db)
-    return {
-        "resumo": resumo,
-        "grafico_hora": grafico_hora
-    }
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

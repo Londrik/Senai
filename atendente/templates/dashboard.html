@@ -5,17 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SENAI - Dashboard de Gestão</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Biblioteca de Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="/static/css/totem.css">
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
 
-    <!-- Navbar -->
     <nav class="bg-[#005DA5] p-4 text-white shadow-md">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold italic">SENAI <span class="font-light not-italic">Dashboard</span></h1>
-            <a href="/atendente" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm transition-all">Sair</a>
+            <div class="flex items-center gap-4">
+                <button onclick="solicitarResetFila()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm">
+                    🗑️ Resetar Fila
+                </button>
+                <a href="/atendente" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm transition-all">Sair</a>
+            </div>
         </div>
     </nav>
 
@@ -30,19 +33,17 @@
             </button>
         </div>
 
-        <!-- Cards de Resumo Rápido -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <!-- Total Atendidos -->
             <div class="bg-white p-6 rounded-3xl shadow-sm border-b-4 border-blue-500">
                 <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Total Atendidos</p>
                 <h3 id="card-total" class="text-4xl font-black text-gray-800">0</h3>
             </div>
-            <!-- Tempo Médio -->
+            
             <div class="bg-white p-6 rounded-3xl shadow-sm border-b-4 border-green-500">
                 <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Tempo Médio de Espera</p>
                 <h3 id="card-media" class="text-4xl font-black text-gray-800">0 <span class="text-lg font-light">min</span></h3>
             </div>
-            <!-- Status do Sistema -->
+            
             <div class="bg-white p-6 rounded-3xl shadow-sm border-b-4 border-yellow-500">
                 <p class="text-sm font-bold text-gray-400 uppercase tracking-wider">Status do Servidor</p>
                 <div class="flex items-center gap-2">
@@ -52,15 +53,12 @@
             </div>
         </div>
 
-        <!-- Área dos Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Gráfico de Barras -->
             <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100">
                 <h4 class="text-xl font-bold text-gray-700 mb-6">Volume por Horário</h4>
                 <canvas id="graficoBarras"></canvas>
             </div>
 
-            <!-- Gráfico de Pizza -->
             <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100">
                 <h4 class="text-xl font-bold text-gray-700 mb-6">Distribuição por Serviço</h4>
                 <div class="max-w-[300px] mx-auto">

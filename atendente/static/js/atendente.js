@@ -1,28 +1,43 @@
-lucide.createIcons();
+/**
+ * SISTEMA DE ATENDIMENTO SENAI - JS DO ATENDENTE
+ */
+
+// Inicialização segura de ícones
+if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+}
+
 let atendimentoAtual = null;
 
-// --- LÓGICA DE CONEXÃO WEBSOCKET ---
+// --- CONEXÃO WEBSOCKET ---
 const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
 const socket = new WebSocket(`${protocol}${window.location.host}/ws`);
 
 socket.onmessage = function(event) {
-    if (event.data === "atualizar_lista") {
-        console.log("📢 Nova senha detectada no totem! Atualizando fila...");
-        atualizarFila();
+    try {
+        const data = JSON.parse(event.data);
+        if (data.tipo === "atualizar_lista") {
+            console.log("🔄 Fila atualizada via WebSocket");
+            atualizarFila();
+        }
+    } catch (e) {
+        if (event.data === "atualizar_lista") {
+            atualizarFila();
+        }
     }
 };
 
-socket.onclose = function() {
-    console.error("❌ Conexão com o servidor perdida. Tentando reconectar...");
-    setTimeout(() => window.location.reload(), 5000);
-};
+socket.onclose = () => console.warn("⚠️ WebSocket do atendente desconectado.");
 
 // --- FUNÇÕES DE ATENDIMENTO ---
-async function chamarProximo() {
-    const guicheSelecionado = document.getElementById("select-guiche").value;
+
+async function chamarEspecifica(id) {
+    const guicheEl = document.getElementById("select-guiche");
+    const guicheSelecionado = guicheEl ? guicheEl.value : "Guichê 01";
     
     try {
-        const response = await fetch("/chamar-proxima", { 
+        // Usando window.location.origin para evitar erro 404 de rota
+        const response = await fetch(`${window.location.origin}/chamar-especifica/${id}`, { 
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ guiche: guicheSelecionado })
@@ -30,59 +45,82 @@ async function chamarProximo() {
 
         if (response.ok) {
             atendimentoAtual = await response.json();
-            document.getElementById("atendente-codigo").textContent = atendimentoAtual.codigo;
-            document.getElementById("atendente-nome").textContent = atendimentoAtual.nome;
+            exibirAtendimentoNaTela(atendimentoAtual);
             atualizarFila();
         } else {
-            const erroData = await response.json();
-            alert("Erro: " + (erroData.detail || "Falha na requisição"));
+            console.error("Erro ao chamar específica:", response.status);
         }
     } catch (error) {
-        console.error("Erro na requisição:", error);
+        console.error("Erro na requisição específica:", error);
     }
 }
 
-async function chamarNovamente(event) {
-    if (!atendimentoAtual) return alert("Nenhuma senha em atendimento.");
+async function chamarProximo() {
+    const guicheEl = document.getElementById("select-guiche");
+    const guicheSelecionado = guicheEl ? guicheEl.value : "Guichê 01";
 
     try {
-        const response = await fetch("/repetir-chamada", { method: "POST" });
-        
+        const response = await fetch(`${window.location.origin}/chamar-proxima`, { 
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ guiche: guicheSelecionado })
+        });
+
         if (response.ok) {
-            const btn = event.currentTarget; 
-            const originalColor = btn.style.backgroundColor;
-            btn.style.backgroundColor = "#d1fae5";
-            setTimeout(() => btn.style.backgroundColor = originalColor, 500);
+            atendimentoAtual = await response.json();
+            exibirAtendimentoNaTela(atendimentoAtual);
+            atualizarFila();
+        } else if (response.status === 404) {
+            alert("Não há ninguém na fila de espera.");
         }
     } catch (error) {
-        console.error("Erro ao repetir chamada:", error);
+        console.error("Erro ao chamar próximo:", error);
     }
 }
 
+// Função para atualizar os textos na tela do atendente
+function exibirAtendimentoNaTela(dados) {
+    const codEl = document.getElementById("atendente-codigo");
+    const nomeEl = document.getElementById("atendente-nome");
+    if (codEl) codEl.textContent = dados.codigo;
+    if (nomeEl) nomeEl.textContent = dados.nome || "---";
+}
+
+// Função para buscar e renderizar a fila lateral
 async function atualizarFila() {
     try {
-        const response = await fetch("/listar-fila");
+        // Timestamp para evitar cache (problema comum no Chrome/Edge)
+        const response = await fetch(`${window.location.origin}/listar-fila?t=${new Date().getTime()}`);
         const fila = await response.json();
         
         const lista = document.getElementById("lista-espera");
         const contador = document.getElementById("contador-fila");
         
-        contador.textContent = `${fila.length} na fila`;
+        // Filtra apenas quem ainda NÃO tem guichê (está esperando)
+        const aguardando = fila.filter(item => item.guiche === null);
 
-        if (fila.length === 0) {
-            lista.innerHTML = `<p class="text-center text-gray-400 py-4">Fila vazia</p>`;
+        if (contador) contador.textContent = `${aguardando.length} na fila`;
+
+        if (!lista) return;
+
+        if (aguardando.length === 0) {
+            lista.innerHTML = `<p class="text-center text-gray-400 py-4 font-bold uppercase text-[10px]">Fila vazia</p>`;
             return;
         }
 
-        lista.innerHTML = fila.map(item => `
-            <div class="flex justify-between items-center p-4 bg-gray-50 rounded-xl border-l-4 ${item.tipo === "Prioritário" || item.tipo === "Preferencial" ? "border-red-500" : "border-blue-600"}">
-                <div>
-                    <span class="font-black text-lg">${item.codigo}</span>
-                    <span class="ml-3 text-gray-600 font-medium">${item.nome}</span>
+        lista.innerHTML = aguardando.map(item => `
+            <div onclick="chamarEspecifica(${item.id})" 
+                class="flex justify-between items-center p-4 bg-white hover:bg-blue-50 cursor-pointer transition-all duration-200 rounded-xl border-l-4 shadow-sm mb-2 group ${item.tipo === "Prioritário" || item.tipo === "Preferencial" ? "border-red-500" : "border-blue-600"}">
+                <div class="flex flex-col">
+                    <span class="font-black text-lg group-hover:text-blue-700">${item.codigo}</span>
+                    <span class="text-gray-600 font-medium text-sm">${item.nome || "Anônimo"}</span>
                 </div>
-                <span class="text-xs font-bold uppercase px-2 py-1 rounded ${item.tipo === "Prioritário" || item.tipo === "Preferencial" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}">
-                    ${item.tipo}
-                </span>
+                <div class="flex flex-col items-end gap-1">
+                    <span class="text-[9px] font-bold uppercase px-2 py-1 rounded ${item.tipo === "Prioritário" || item.tipo === "Preferencial" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}">
+                        ${item.tipo}
+                    </span>
+                    <span class="text-[8px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">Clique para chamar</span>
+                </div>
             </div>
         `).join("");
     } catch (error) {
@@ -90,6 +128,6 @@ async function atualizarFila() {
     }
 }
 
-// Mantém um backup de atualização a cada 30s caso o socket falhe
-setInterval(atualizarFila, 30000);
+// Intervalo de segurança caso o WebSocket caia
+setInterval(atualizarFila, 15000);
 atualizarFila();

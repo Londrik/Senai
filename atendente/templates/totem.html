@@ -9,57 +9,58 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center font-sans">
 
-    <!-- Cartão Único do Totem -->
-    <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg text-center border border-gray-100">
-        
-        <!-- Cabeçalho (Sempre visível) -->
-        <div id="header-totem" class="mb-10">
-            <h1 class="text-4 shadow-sm text-[#005DA5] font-black text-5xl italic tracking-tighter">
-                SENAI <span class="text-gray-400 font-light not-italic text-3xl">GAMA</span>
-            </h1>
-            <div class="h-1 w-20 bg-red-600 mx-auto mt-2 rounded-full"></div>
-        </div>
-
-        <!-- TELA 1: Seleção de Serviços -->
-        <div id="grid-servicos" class="flex flex-col gap-5">
-            <p class="text-gray-500 mb-2 font-medium text-lg">Selecione o serviço desejado:</p>
+    <main class="w-full flex justify-center items-center">
+        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg text-center border border-gray-100 mx-4">
             
-            <button onclick="gerarSenha('Geral')" 
-                class="w-full py-8 bg-[#005DA5] hover:bg-[#004a85] text-white text-2xl font-bold rounded-2xl transition-all transform active:scale-95 shadow-lg">
-                ATENDIMENTO GERAL
-            </button>
-
-            <button onclick="gerarSenha('Matrícula')" 
-                class="w-full py-8 bg-[#005DA5] hover:bg-[#004a85] text-white text-2xl font-bold rounded-2xl transition-all transform active:scale-95 shadow-lg border-b-4 border-black/20">
-                MATRÍCULA / FINANCEIRO
-            </button>
-
-            <button onclick="gerarSenha('Preferencial')" 
-                class="w-full py-8 bg-gray-200 hover:bg-gray-300 text-[#005DA5] text-2xl font-bold rounded-2xl transition-all transform active:scale-95 border-b-4 border-gray-400/50">
-                PREFERENCIAL
-            </button>
-        </div>
-
-        <!-- TELA 2: Feedback de Sucesso (Inicia escondida com 'hidden') -->
-        <div id="feedback-sucesso" class="hidden animate-fade-in">
-            <div class="bg-green-50 border-2 border-green-200 rounded-3xl p-8 mb-6">
-                <h2 class="text-green-700 font-bold text-xl mb-2">SENHA GERADA COM SUCESSO!</h2>
-                <p class="text-gray-600 text-sm uppercase tracking-widest mb-4" id="info-servico"></p>
-                
-                <div class="bg-white border-4 border-[#005DA5] inline-block px-10 py-6 rounded-2xl shadow-inner">
-                    <span id="display-senha" class="text-[#005DA5] text-7xl font-black tracking-widest">---</span>
-                </div>
+            <div id="header-totem" class="mb-10">
+                <h1 class="text-[#005DA5] font-black text-5xl italic tracking-tighter">
+                    SENAI <span class="text-gray-400 font-light not-italic text-3xl">GAMA</span>
+                </h1>
+                <div class="h-1 w-20 bg-red-600 mx-auto mt-2 rounded-full"></div>
             </div>
-            <p class="text-gray-500 font-medium italic">Aguarde ser chamado no painel...</p>
+
+            <div id="grid-servicos" class="flex flex-col gap-5">
+                <div class="mb-4 text-left">
+                    <label class="block text-gray-500 font-bold mb-2 text-sm uppercase tracking-wide ml-2">Seu Nome:</label>
+                    <input type="text" id="input-nome" placeholder="Digite seu nome completo" 
+                        class="w-full px-6 py-4 rounded-xl border-2 border-gray-100 focus:border-[#005DA5] outline-none transition-all text-lg font-medium text-center shadow-inner bg-gray-50">
+                </div>
+
+                <p class="text-gray-500 mb-2 font-medium text-lg">Selecione o serviço:</p>
+                
+                <button onclick="gerarSenha('Geral')" 
+                    class="w-full py-6 bg-[#005DA5] hover:bg-[#004a85] text-white text-2xl font-bold rounded-2xl transition-all transform active:scale-95 shadow-lg">
+                    ATENDIMENTO GERAL
+                </button>
+
+                <button onclick="gerarSenha('Matrícula')" 
+                    class="w-full py-6 bg-[#005DA5] hover:bg-[#004a85] text-white text-2xl font-bold rounded-2xl transition-all transform active:scale-95 shadow-lg border-b-4 border-black/20">
+                    MATRÍCULA / FINANCEIRO
+                </button>
+
+                <button onclick="gerarSenha('Preferencial')" 
+                    class="w-full py-6 bg-gray-200 hover:bg-gray-300 text-[#005DA5] text-2xl font-bold rounded-2xl transition-all transform active:scale-95 border-b-4 border-gray-400/50">
+                    PREFERENCIAL
+                </button>
+            </div>
+
+            <div id="feedback-sucesso" class="hidden">
+                <div class="bg-green-50 border-2 border-green-200 rounded-3xl p-8 mb-6">
+                    <h2 class="text-green-700 font-bold text-xl mb-2">SENHA GERADA!</h2>
+                    <p class="text-gray-600 text-sm uppercase tracking-widest mb-4" id="info-servico"></p>
+                    <div class="bg-white border-4 border-[#005DA5] inline-block px-10 py-6 rounded-2xl shadow-inner">
+                        <span id="display-senha" class="text-[#005DA5] text-7xl font-black tracking-widest">---</span>
+                    </div>
+                </div>
+                <p class="text-gray-500 font-medium italic">Aguarde ser chamado no painel...</p>
+            </div>
+
+            <p class="text-gray-400 mt-10 text-sm font-semibold uppercase tracking-widest">
+                Unidade de Tecnologia da Informação
+            </p>
         </div>
+    </main>
 
-        <!-- Rodapé (Sempre visível) -->
-        <p class="text-gray-400 mt-10 text-sm font-semibold uppercase tracking-widest">
-            Unidade de Tecnologia da Informação
-        </p>
-    </div>
-
-    <!-- Script Único -->
     <script src="/static/js/totem.js"></script>
 </body>
 </html>

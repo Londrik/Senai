@@ -2,34 +2,39 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+from pathlib import Path
 
-# Recupera os dados do ambiente
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_PORT = os.getenv("DB_PORT", "3306")
+# --- CONFIGURAÇÃO DE AMBIENTE ---
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
-# Monta a URL
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Tenta carregar a URL do Railway, se não existir, usa SQLITE LOCAL
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-print(f"DEBUG: Tentando conectar em {DB_HOST}:{DB_PORT} com o banco {DB_NAME}")
+if not SQLALCHEMY_DATABASE_URL:
+    # Cria o banco de dados na pasta do projeto automaticamente
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
+    print("DEBUG: Usando SQLite LOCAL (sql_app.db)")
+else:
+    print("DEBUG: Usando conexão de PRODUÇÃO (Railway)")
 
-# 1. Cria o motor de conexão com proteção contra timeouts (Pool de conexões resiliente)
+# --- CONFIGURAÇÃO DO SQLALCHEMY ---
+# check_same_thread=False é OBRIGATÓRIO para SQLite funcionar com FastAPI/WebSockets
+connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
+
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    pool_recycle=3600,  # Fecha conexões com mais de 1 hora para evitar timeout do MySQL
-    pool_pre_ping=True  # Testa a conexão antes de cada uso (Evita o erro "Server has gone away")
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    echo=False
 )
 
-# 2. Cria a fábrica de sessões
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# 3. Cria a classe Base que o models.py está procurando
 Base = declarative_base()
 
-# Função para gerenciar as sessões do banco de dados nas rotas
 def get_db():
+    """Gerencia a abertura e fechamento das sessões do banco."""
     db = SessionLocal()
     try:
         yield db
