@@ -5,7 +5,8 @@ def criar_atendimento(db: Session, nome: str, tipo: str):
     prefixo = "P" if tipo.upper() == "PREFERENCIAL" else "N"
     count = db.query(models.Atendimento).count() + 1
     codigo = f"{prefixo}{count:03d}"
-    db_atendimento = models.Atendimento(nome=nome or "ALUNO SENAI", tipo=tipo, codigo=codigo, status="aguardando")
+    nome_final = nome if (nome and nome.strip()) else "ALUNO SENAI"
+    db_atendimento = models.Atendimento(nome=nome_final, tipo=tipo, codigo=codigo, status="aguardando")
     db.add(db_atendimento)
     db.commit()
     db.refresh(db_atendimento)
