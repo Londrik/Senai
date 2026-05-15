@@ -1,50 +1,52 @@
-(function() {
-    let ultimaSenha = "";
+const socket = new WebSocket(`ws://${window.location.host}/ws`);
+const audio = document.getElementById('audioChamada');
 
-    async function atualizarPainel() {
-        try {
-            const response = await fetch(`/listar-fila?t=${Date.now()}`);
-            const fila = await response.json();
+// Desbloqueia áudio no primeiro clique
+document.addEventListener('click', () => {
+    if (audio) { audio.play().then(() => { audio.pause(); audio.currentTime = 0; }); }
+}, { once: true });
 
-            // Pega apenas quem já tem guichê definido
-            const chamados = fila.filter(i => i.guiche).sort((a, b) => b.id - a.id);
+socket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    if (data.tipo === "atualizar_painel") {
+        // 1. Tela
+        document.getElementById('current-ticket').innerText = data.senha;
+        document.getElementById('current-name').innerText = data.nome.toUpperCase();
+        document.getElementById('current-guiche').innerText = data.guiche;
 
-            if (chamados.length > 0) {
-                const atual = chamados[0];
-                
-                // Atualiza a tela independente de qualquer erro anterior
-                const ticket = document.getElementById('current-ticket');
-                const nome = document.getElementById('current-name');
-                const guiche = document.getElementById('current-guiche');
+        // 2. Brilho
+        const card = document.getElementById('card-principal');
+        if (card) {
+            card.classList.add('flash-effect');
+            setTimeout(() => card.classList.remove('flash-effect'), 5000);
+        }
 
-                if (ticket) ticket.textContent = atual.codigo;
-                if (nome) nome.textContent = atual.nome || "ALUNO";
-                if (guiche) guiche.textContent = atual.guiche;
+        // 3. Som MP3 Local
+        if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
 
-                // Toca o áudio apenas se o arquivo existir, sem travar o código
-                if (atual.codigo !== ultimaSenha) {
-                    ultimaSenha = atual.codigo;
-                    const audio = document.getElementById('audioChamada');
-                    if (audio) {
-                        audio.play().catch(() => console.log("Áudio aguardando interação do usuário."));
-                    }
-                    
-                    // Voz (SpeechSynthesis não depende de arquivo externo)
-                    const fala = new SpeechSynthesisUtterance(`Senha ${atual.codigo}, dirija-se ao ${atual.guiche}`);
-                    fala.lang = 'pt-BR';
-                    window.speechSynthesis.speak(fala);
-                }
-            }
-        } catch (e) {
-            console.error("Erro ao processar dados:", e);
+        // 4. Voz (Pausas com pontos resolvem o quiquiche)
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const frase = `Senha. ${data.senha.split('').join(' ')}. . ${data.nome}. . Guichê. . ${data.guiche}`;
+            const msg = new SpeechSynthesisUtterance(frase);
+            msg.lang = 'pt-BR';
+            msg.rate = 0.8;
+            window.speechSynthesis.speak(msg);
+        }
+
+        // 5. Histórico Lateral do Painel
+        const lista = document.getElementById('history-list');
+        if (lista) {
+            const item = document.createElement('div');
+            item.className = "flex justify-between items-center bg-gray-50 p-4 rounded-xl border-l-4 border-[#005ca9] mb-4 shadow-sm";
+            item.innerHTML = `<div><div class="text-3xl font-black text-[#005ca9]">${data.senha}</div><div class="text-sm font-bold text-gray-400 uppercase">${data.guiche}</div></div><div class="text-xs font-bold text-gray-300 uppercase italic">Aluno</div>`;
+            lista.prepend(item);
+            if (lista.children.length > 5) lista.removeChild(lista.lastChild);
         }
     }
+};
 
-    // WebSocket + Intervalo de backup
-    const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`);
-    ws.onmessage = () => atualizarPainel();
-    
-    // Força atualização a cada 3 segundos se o WebSocket falhar
-    setInterval(atualizarPainel, 3000);
-    atualizarPainel();
-})();
+setInterval(() => {
+    const cl = document.getElementById('clock');
+    if (cl) cl.innerText = new Date().toLocaleTimeString('pt-BR');
+}, 1000);

@@ -9,17 +9,10 @@ body {
     margin: 0;
 }
 
-/* Telão (Desktop): Trava o scroll */
+/* Trava o scroll no Desktop */
 @media (min-width: 768px) {
     body {
         overflow: hidden;
-    }
-}
-
-/* Mobile: Permite rolar para ver o histórico */
-@media (max-width: 767px) {
-    body {
-        overflow-y: auto;
     }
 }
 
@@ -31,4 +24,23 @@ body {
 #current-name {
     word-wrap: break-word;
     max-width: 90%;
+}
+
+/* Efeito de Brilho/Flash Profissional */
+.flash-effect {
+    animation: flash-animation 0.8s ease-in-out infinite;
+}
+
+@keyframes flash-animation {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1); 
+        box-shadow: 0 0 0px rgba(255,255,255,0);
+    }
+    50% { 
+        opacity: 0.9; 
+        transform: scale(1.02); 
+        filter: brightness(1.4); /* Faz o azul brilhar */
+        box-shadow: 0 0 50px rgba(255,255,255,0.5); /* Brilho externo branco */
+    }
 }

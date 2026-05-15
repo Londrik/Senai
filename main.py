@@ -2,109 +2,85 @@ from fastapi import FastAPI, Request, Depends, HTTPException, WebSocket, WebSock
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List
-import uvicorn
-import json
-import os
+import json, os
 
 from atendente import models, schemas, crud
 from atendente.database import SessionLocal, engine, get_db
 
-# Inicialização do Banco de Dados
 models.Base.metadata.create_all(bind=engine)
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: dict):
-        for connection in list(self.active_connections):
-            try:
-                await connection.send_text(json.dumps(message))
-            except Exception:
-                self.disconnect(connection)
+        self.active_connections = []
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.active_connections.append(ws)
+    def disconnect(self, ws: WebSocket):
+        if ws in self.active_connections: self.active_connections.remove(ws)
+    async def broadcast(self, msg: dict):
+        for c in list(self.active_connections):
+            try: await c.send_text(json.dumps(msg))
+            except: self.disconnect(c)
 
 manager = ConnectionManager()
-app = FastAPI(title="Sistema de Atendimento SENAI")
-
-# --- CONFIGURAÇÃO DE DIRETÓRIOS ---
+app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-static_path = os.path.join(BASE_DIR, "atendente", "static")
-templates_path = os.path.join(BASE_DIR, "atendente", "templates")
-
-app.mount("/static", StaticFiles(directory=static_path), name="static")
-templates = Jinja2Templates(directory=templates_path)
-
-app.add_middleware(
-    CORSMiddleware, 
-    allow_origins=["*"], 
-    allow_methods=["*"], 
-    allow_headers=["*"]
-)
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "atendente/static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "atendente/templates"))
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+async def websocket_endpoint(ws: WebSocket):
+    await manager.connect(ws)
     try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-
-# --- ROTAS DE NAVEGAÇÃO (CORRIGIDAS) ---
+        while True: await ws.receive_text()
+    except WebSocketDisconnect: manager.disconnect(ws)
 
 @app.get("/", response_class=HTMLResponse)
-async def read_index(request: Request):
-    return templates.TemplateResponse(request, "totem.html")
-
-@app.get("/totem", response_class=HTMLResponse)
-async def exibir_totem(request: Request):
-    return templates.TemplateResponse(request, "totem.html")
+async def totem(request: Request): return templates.TemplateResponse(request=request, name="totem.html")
 
 @app.get("/painel", response_class=HTMLResponse)
-async def exibir_painel(request: Request):
-    return templates.TemplateResponse(request, "painel.html")
+async def painel(request: Request, db: Session = Depends(get_db)):
+    historico = crud.get_ultimas_chamadas(db)
+    return templates.TemplateResponse(request=request, name="painel.html", context={"historico": historico})
 
 @app.get("/atendente", response_class=HTMLResponse)
-async def exibir_atendente(request: Request):
-    return templates.TemplateResponse(request, "atendente.html")
-
-# --- ROTAS DE API ---
+async def atendente(request: Request): return templates.TemplateResponse(request=request, name="atendente.html")
 
 @app.get("/listar-fila")
-def listar_fila(db: Session = Depends(get_db)):
-    return crud.get_fila_espera(db)
+def listar(db: Session = Depends(get_db)): return crud.get_fila_espera(db)
 
-@app.post("/gerar-senha", response_model=schemas.Atendimento)
-async def gerar_senha(senha: schemas.AtendimentoCreate, db: Session = Depends(get_db)):
-    nova_senha = crud.criar_atendimento(db=db, nome=senha.nome, tipo=senha.tipo)
+@app.get("/atendente-historico")
+def hist_atend(db: Session = Depends(get_db)): return crud.get_historico_atendente(db)
+
+@app.post("/gerar-senha")
+async def gerar(senha: schemas.AtendimentoCreate, db: Session = Depends(get_db)):
+    nova = crud.criar_atendimento(db, senha.nome, senha.tipo)
     await manager.broadcast({"tipo": "atualizar_lista"})
-    return nova_senha
+    return nova
 
-@app.post("/chamar-proxima", response_model=schemas.Atendimento)
-async def chamar_proxima(dados: schemas.ChamadaRequest, db: Session = Depends(get_db)):
-    proximo = crud.chamar_proximo(db, guiche=dados.guiche)
-    if not proximo:
-        raise HTTPException(status_code=404, detail="Fila de espera vazia.")
-    
-    await manager.broadcast({
-        "tipo": "atualizar_painel",
-        "senha": proximo.codigo,
-        "nome": proximo.nome,
-        "guiche": proximo.guiche
-    })
+@app.post("/chamar-proxima")
+async def proxima(dados: schemas.ChamadaRequest, db: Session = Depends(get_db)):
+    p = crud.chamar_proxima_senha(db, dados.guiche)
+    if not p: raise HTTPException(404)
+    payload = {"tipo": "atualizar_painel", "senha": p.codigo, "nome": p.nome, "guiche": p.guiche}
+    await manager.broadcast(payload)
     await manager.broadcast({"tipo": "atualizar_lista"})
-    return proximo
+    return p
 
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+@app.post("/chamar-especifica/{sid}")
+async def especifica(sid: int, dados: schemas.ChamadaRequest, db: Session = Depends(get_db)):
+    p = crud.chamar_por_id(db, sid, dados.guiche)
+    if not p: raise HTTPException(404)
+    payload = {"tipo": "atualizar_painel", "senha": p.codigo, "nome": p.nome, "guiche": p.guiche}
+    await manager.broadcast(payload)
+    await manager.broadcast({"tipo": "atualizar_lista"})
+    return p
+
+@app.post("/chamar-novamente/{sid}")
+async def de_novo(sid: int, db: Session = Depends(get_db)):
+    p = crud.buscar_senha_por_id(db, sid)
+    if not p: raise HTTPException(404)
+    payload = {"tipo": "atualizar_painel", "senha": p.codigo, "nome": p.nome, "guiche": p.guiche}
+    await manager.broadcast(payload)
+    return {"status": "ok"}

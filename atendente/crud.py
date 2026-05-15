@@ -1,87 +1,42 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from datetime import datetime
-from . import models, schemas
+from . import models
 
 def criar_atendimento(db: Session, nome: str, tipo: str):
-    """Gera uma nova senha sequencial e persiste no estado 'Aguardando'."""
-    prefixo = "P" if tipo == "Preferencial" else "N"
-    total = db.query(models.Atendimento).count() + 1
-    codigo = f"{prefixo}{total:03d}"
-    
-    db_atendimento = models.Atendimento(
-        nome=nome, tipo=tipo, codigo=codigo, 
-        status="Aguardando", data_criacao=datetime.now()
-    )
+    prefixo = "P" if tipo.upper() == "PREFERENCIAL" else "N"
+    count = db.query(models.Atendimento).count() + 1
+    codigo = f"{prefixo}{count:03d}"
+    db_atendimento = models.Atendimento(nome=nome or "ALUNO SENAI", tipo=tipo, codigo=codigo, status="aguardando")
     db.add(db_atendimento)
     db.commit()
     db.refresh(db_atendimento)
     return db_atendimento
 
 def get_fila_espera(db: Session):
-    """Retorna todas as senhas pendentes de atendimento."""
-    return db.query(models.Atendimento).filter(models.Atendimento.status == "Aguardando").all()
-
-def resetar_fila_ativa(db: Session):
-    """Remove todos os registros da fila de atendimento ativa (Reset Diário)."""
-    db.query(models.Atendimento).delete()
-    db.commit()
+    return db.query(models.Atendimento).filter(models.Atendimento.status == "aguardando").all()
 
 def chamar_por_id(db: Session, senha_id: int, guiche: str):
-    """Realiza a chamada de um ID específico e registra no histórico de performance."""
-    proximo = db.query(models.Atendimento).filter(
-        models.Atendimento.id == senha_id,
-        models.Atendimento.status == "Aguardando"
-    ).first()
-
-    if proximo:
-        agora = datetime.now()
-        delta = agora - (proximo.data_criacao or agora)
-        espera_segundos = int(delta.total_seconds())
-
-        historico = models.HistoricoAtendimento(
-            codigo=proximo.codigo, nome=proximo.nome, guiche=guiche,
-            tipo=proximo.tipo, data_chegada=proximo.data_criacao,
-            data_chamada=agora, tempo_espera_segundos=espera_segundos
-        )
-        db.add(historico)
-        proximo.status = "Chamado"
-        proximo.guiche = guiche 
+    p = db.query(models.Atendimento).filter(models.Atendimento.id == senha_id).first()
+    if p:
+        p.status = "chamado"
+        p.guiche = guiche
         db.commit()
-        db.refresh(proximo)
-        return proximo
-    return None
+        db.refresh(p)
+    return p
 
-def chamar_proximo(db: Session, guiche: str):
-    """Implementa a regra de negócio de prioridade: Preferencial > Ordem de Chegada."""
-    proximo = db.query(models.Atendimento).filter(
-        models.Atendimento.status == "Aguardando"
-    ).order_by(models.Atendimento.tipo.desc(), models.Atendimento.id.asc()).first()
+def chamar_proxima_senha(db: Session, guiche: str):
+    p = db.query(models.Atendimento).filter(models.Atendimento.status == "aguardando").order_by(models.Atendimento.id.asc()).first()
+    if p:
+        p.status = "chamado"
+        p.guiche = guiche
+        db.commit()
+        db.refresh(p)
+    return p
 
-    return chamar_por_id(db, proximo.id, guiche) if proximo else None
+def get_ultimas_chamadas(db: Session, limit: int = 5):
+    return db.query(models.Atendimento).filter(models.Atendimento.status == "chamado").order_by(models.Atendimento.id.desc()).limit(limit).all()
 
-def get_metricas_resumo(db: Session):
-    """Calcula indicadores de performance baseados na tabela HistoricoAtendimento."""
-    total_atendidos = db.query(models.HistoricoAtendimento).count()
-    media_espera = db.query(func.avg(models.HistoricoAtendimento.tempo_espera_segundos)).scalar() or 0
-    
-    try:
-        distribuicao_tipo = db.query(
-            models.HistoricoAtendimento.tipo, func.count(models.HistoricoAtendimento.id)
-        ).group_by(models.HistoricoAtendimento.tipo).all()
-    except Exception:
-        distribuicao_tipo = []
+def get_historico_atendente(db: Session, limit: int = 10):
+    return db.query(models.Atendimento).filter(models.Atendimento.status == "chamado").order_by(models.Atendimento.id.desc()).limit(limit).all()
 
-    return {
-        "total": total_atendidos,
-        "media_espera": round(media_espera / 60, 1),
-        "distribuicao": dict(distribuicao_tipo)
-    }
-
-def get_atendimentos_por_hora(db: Session):
-    """Gera volume de atendimentos agrupados por hora para análise de tráfego."""
-    dados = db.query(
-        func.hour(models.HistoricoAtendimento.data_chamada).label('hora'),
-        func.count(models.HistoricoAtendimento.id).label('quantidade')
-    ).group_by('hora').all()
-    return [{"hora": f"{int(d.hora)}h", "quantidade": d.quantidade} for d in dados]
+def buscar_senha_por_id(db: Session, senha_id: int):
+    return db.query(models.Atendimento).filter(models.Atendimento.id == senha_id).first()
